@@ -9,6 +9,7 @@ namespace Aurora\Modules\MailCustomSpamCopPlugin;
 
 use Aurora\System\Api;
 use Aurora\System\Enums\UserRole;
+// use Aurora\System\Enums\UserRole;
 
 use Aurora\Modules\Mail\Module as MailModule;
 
@@ -67,13 +68,20 @@ class Module extends \Aurora\System\Module\AbstractModule
     /**
      *@return Managers\Sieve\Manager
      */
-    public function getSieveManager()
+    protected function getSieveManager()
     {
         if ($this->oSieveManager === null) {
             $this->oSieveManager = new Managers\Sieve\Manager(MailModule::getInstance(), $this->oModuleSettings);
         }
 
         return $this->oSieveManager;
+    }
+
+    public function GetSettings()
+    {
+        return [
+            'EActionTypes' => (new Enums\ActionTypes())->getMap(),
+        ];
     }
 
     public function GetAccountSettings($AccountId)
@@ -87,8 +95,9 @@ class Module extends \Aurora\System\Module\AbstractModule
 
             if ($oAccount) {
                 return [
+                    'EActionTypes' => (new Enums\ActionTypes())->getMap(),
                     'Enabled' => $this->getSieveManager()->checkIfRuleExists($oAccount),
-                    'BccAction' => $oAccount->getExtendedProp(self::GetName() . '::BccAction', $oSettings->DefaultAction),
+                    'Action' => $oAccount->getExtendedProp(self::GetName() . '::Action', $oSettings->DefaultAction),
                     'UpperBoundary' => $oAccount->getExtendedProp(self::GetName() . '::UpperBoundary', $oSettings->UpperBoundary),
                     'LowerBoundary' => $oAccount->getExtendedProp(self::GetName() . '::LowerBoundary', $oSettings->LowerBoundary),
                     'AllowDomainList' => $oAccount->getExtendedProp(self::GetName() . '::AllowDomainList', [])
@@ -99,7 +108,7 @@ class Module extends \Aurora\System\Module\AbstractModule
         return [];
     }
 
-    public function UpdateAccountSettings($AccountId, $Enabled, $BccAction, $DomailAllowList, $UpperBoundary, $LowerBoundary)
+    public function UpdateAccountSettings($AccountId, $Enabled, $Action, $DomailAllowList, $UpperBoundary, $LowerBoundary)
     {
         $result = false;
 
@@ -109,15 +118,17 @@ class Module extends \Aurora\System\Module\AbstractModule
         if ($oUser) {
             $oAccount = MailModule::Decorator()->GetAccount($AccountId);
 
+            $Action = Enums\ActionTypes::validateValue($Action) ? $Action : Enums\ActionTypes::Spam;
+
             if ($oAccount) {
-                $oAccount->setExtendedProp(self::GetName() . '::UpperBoundary', $UpperBoundary);
-                $oAccount->setExtendedProp(self::GetName() . '::LowerBoundary', $LowerBoundary);
-                $oAccount->setExtendedProp(self::GetName() . '::BccAction', $BccAction);
-                $oAccount->setExtendedProp(self::GetName() . '::AllowDomainList', $DomailAllowList);
+                $oAccount->setExtendedProp(self::GetName() . '::UpperBoundary', (int) $UpperBoundary);
+                $oAccount->setExtendedProp(self::GetName() . '::LowerBoundary', (int) $LowerBoundary);
+                $oAccount->setExtendedProp(self::GetName() . '::Action', $Action);
+                $oAccount->setExtendedProp(self::GetName() . '::AllowDomainList', (array) $DomailAllowList);
                 $result = $oAccount->save();
 
                 if ($result) {
-                    $result = $this->getSieveManager()->setSpamCopRule($oAccount, !!$Enabled);
+                    $result = $this->getSieveManager()->setSpamCopRule($oAccount, !!$Enabled, $Action);
                 }
             }
         }

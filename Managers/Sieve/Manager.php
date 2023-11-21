@@ -8,14 +8,12 @@
 namespace Aurora\Modules\MailCustomSpamCopPlugin\Managers\Sieve;
 
 use Aurora\Api;
-use Aurora\Modules\Mail\Module;
+use Aurora\Modules\MailCustomSpamCopPlugin\Enums\ActionTypes;
 
 /**
  * @license https://www.gnu.org/licenses/agpl-3.0.html AGPL-3.0
  * @license https://afterlogic.com/products/common-licensing Afterlogic Software License
  * @copyright Copyright (c) 2023, Afterlogic Corp.
- *
- * @property Module $oModule
  */
 class Manager extends \Aurora\Modules\Mail\Managers\Sieve\Manager
 {
@@ -33,7 +31,8 @@ class Manager extends \Aurora\Modules\Mail\Managers\Sieve\Manager
         parent::__construct($oModule);
 
         $this->oModuleSettings = $oSettings;
-        $this->aSectionsOrders[] = 'SpamCop';
+
+        array_splice($this->aSectionsOrders, 0, 0, ['SpamCop']);
     }
 
     /**
@@ -63,10 +62,11 @@ class Manager extends \Aurora\Modules\Mail\Managers\Sieve\Manager
     /**
      * @param \Aurora\Modules\Mail\Models\MailAccount $oAccount
      * @param boolean $bEnabled
+     * @param ActionTypes $Action
      *
      * @return bool
      */
-    public function setSpamCopRule($oAccount, $bEnable = true)
+    public function setSpamCopRule($oAccount, $bEnable = true, $Action = ActionTypes::Spam)
     {
         $sData = '';
 
@@ -79,7 +79,7 @@ class Manager extends \Aurora\Modules\Mail\Managers\Sieve\Manager
             $sEncodedData = \base64_encode('filter-spamcop.php');
             $sData .= '#data=' . $sEncodedData . "\n";
             $sData .= "if not execute :pipe \"" . $sScriptPath . "\" {\n";
-            $sData .= "    fileinto \"Spam\";\n";
+            $sData .= "    " . ($Action === ActionTypes::Delete ? "discard;" : "fileinto \"Spam\";") . "\n";
             $sData .= "    stop;\n";
             $sData .= "}\n";
 

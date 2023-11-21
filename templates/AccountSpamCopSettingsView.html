@@ -20,11 +20,11 @@
 				</div>
 			</div>
 			<div class="row" data-bind="css: {'disabled': !enabled()}">
-				<span class="label" data-bind="i18n: {'key': '%MODULENAME%/LABEL_BCC_EMAIL_ACTION'}"></span>
-				<select class="value input" data-bind="options: aActionOptions, optionsText: 'label', value: bccAction, disable: !enabled()"></select>
+				<span class="label" data-bind="i18n: {'key': '%MODULENAME%/LABEL_MAIN_ACTION'}"></span>
+				<select class="value input" data-bind="options: aActionOptions, optionsText: 'label', value: action, disable: !enabled()"></select>
 			</div> 
 			<div class="row hint">
-				<span data-bind="i18n: {'key': '%MODULENAME%/HINT_BCC_EMAIL_ACTION'}"></span>
+				<span data-bind="i18n: {'key': '%MODULENAME%/HINT_MAIN_ACTION'}"></span>
 			</div>
 			<div class="row" data-bind="visible: showDomainAllowList, css: {'disabled': !enabled()}">
 				<span class="label" data-bind="i18n: {'key': '%MODULENAME%/LABEL_DOMAIN_ALLOW_LIST'}"></span>

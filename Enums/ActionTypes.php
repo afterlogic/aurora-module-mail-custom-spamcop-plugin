@@ -19,4 +19,12 @@ class ActionTypes extends \Aurora\System\Enums\AbstractEnumeration
 {
     public const Delete = 'delete';
     public const Spam = 'spam';
+
+    /**
+     * @var array
+     */
+    protected $aConsts = array(
+        'Delete' => self::Delete,
+        'Spam' => self::Spam
+    );
 }

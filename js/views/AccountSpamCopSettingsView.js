@@ -16,9 +16,7 @@ var
 
 	AccountList = require('modules/MailWebclient/js/AccountList.js'),
 
-	Settings = {
-		ServerModuleName: 'MailCustomSpamCopPlugin'
-	}
+	Settings = require('modules/%ModuleName%/js/Settings.js')
 ;
 
 /**
@@ -29,37 +27,25 @@ function AccountSpamCopSettingsView()
 	CAbstractSettingsFormView.call(this, '%ModuleName%')
 
 	this.enabled =  ko.observable(false)
-	this.bccAction =  ko.observable(null)
+	this.action =  ko.observable(null)
 	this.lowerSpamScore =  ko.observable(3)
 	this.upperSpamScore =  ko.observable(5)
-	// this.spamScore = ko.observable('');
 	this.domainAllowList = ko.observable('')
 	// this.domainBlockList = ko.observableArray([])
 
-	// this.allowListAction =  ko.observable('')
-	// this.blockListAction =  ko.observable('')
-
 	this.aActionOptions = [
-		// {
-		// 	label: TextUtils.i18n('%MODULENAME%/OPTION_ACTION_NOT_DEFINED'),
-		// 	value: ''
-		// },
-		{
-			label: TextUtils.i18n('%MODULENAME%/OPTION_ACTION_KEEP'),
-			value: ''
-		},
 		{
 			label: TextUtils.i18n('%MODULENAME%/OPTION_ACTION_SPAM'),
-			value: 'spam'
+			value: Settings.EActionTypes.Spam
 		},
 		{
 			label: TextUtils.i18n('%MODULENAME%/OPTION_ACTION_DELETE'),
-			value: 'delete'
+			value: Settings.EActionTypes.Delete
 		},
 	]
 		
 	this.showDomainAllowList = ko.computed(() => {
-		return this.bccAction()?.value === 'delete' || this.bccAction()?.value === 'spam'
+		return this.action()?.value === Settings.EActionTypes.Delete || this.action()?.value === Settings.EActionTypes.Spam
 	})
 }
 
@@ -76,7 +62,7 @@ AccountSpamCopSettingsView.prototype.getCurrentValues = function ()
 {
 	return [
 		this.enabled(),
-		this.bccAction(),
+		this.action(),
 		this.lowerSpamScore(),
 		this.upperSpamScore(),
 		this.domainAllowList(),
@@ -87,16 +73,15 @@ AccountSpamCopSettingsView.prototype.getCurrentValues = function ()
 AccountSpamCopSettingsView.prototype.getParametersForSave = function ()
 {
 	const oAccount = AccountList.getEdited()
-	
 	let params = {}
-	
+
 	if (oAccount) {
 		params = {
 			'AccountId': oAccount.id(),
 			'Enabled': this.enabled(),
 			'LowerBoundary': Types.pDouble(this.lowerSpamScore()),
 			'UpperBoundary': Types.pDouble(this.upperSpamScore()),
-			'BccAction': this.bccAction()?.value ? this.bccAction().value : '',
+			'Action': this.action()?.value ? this.action().value : '',
 			'DomailAllowList': this.domainAllowList() !== '' ? this.domainAllowList()?.split('\n') : [],
 			// 'DomailBlockList': this.domainBlockList() !== '' ? this.domainBlockList().split('\n') : [],
 		}
@@ -148,10 +133,10 @@ AccountSpamCopSettingsView.prototype.onGetSettingsResponse = function (oResponse
 	const oResult = oResponse && oResponse.Result
 
 	if (oResult) {
-		const BccAction = Types.pString(oResult.BccAction)
-		const oAction = this.aActionOptions.find(item => item.value === BccAction)
+		const sAction = Types.pString(oResult.Action)
+		const oAction = this.aActionOptions.find(item => item.value === sAction)
 		if (oAction) {
-			this.bccAction(oAction);
+			this.action(oAction);
 		}
 
 		this.enabled(Types.pBool(oResult.Enabled));
