@@ -47,7 +47,7 @@ class Settings extends \Aurora\System\Module\Settings
                 "",
             ),
             "SieveScriptPath" => new SettingsProperty(
-                "/opt/afterlogic/html/moduels/MailCustomSpamCopPlugin/Scripts/filter.php",
+                "filter-spamcop.php",
                 "string",
                 null,
                 "",

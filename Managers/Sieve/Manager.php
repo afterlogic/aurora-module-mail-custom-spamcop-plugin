@@ -38,7 +38,7 @@ class Manager extends \Aurora\Modules\Mail\Managers\Sieve\Manager
 
     /**
      * @param \Aurora\Modules\Mail\Models\MailAccount $oAccount
-     * 
+     *
      * @return bool
      */
     public function checkIfRuleExists($oAccount)
@@ -63,7 +63,7 @@ class Manager extends \Aurora\Modules\Mail\Managers\Sieve\Manager
     /**
      * @param \Aurora\Modules\Mail\Models\MailAccount $oAccount
      * @param boolean $bEnabled
-     * 
+     *
      * @return bool
      */
     public function setSpamCopRule($oAccount, $bEnable = true)
@@ -74,7 +74,7 @@ class Manager extends \Aurora\Modules\Mail\Managers\Sieve\Manager
         $bSaved = false;
 
         $sScriptPath = $this->oModuleSettings->SieveScriptPath;
-        
+
         if ($bEnable) { // && \file_exists($sScriptPath)
             $sEncodedData = \base64_encode('filter-spamcop.php');
             $sData .= '#data=' . $sEncodedData . "\n";
@@ -92,7 +92,7 @@ class Manager extends \Aurora\Modules\Mail\Managers\Sieve\Manager
 
         $this->_parseSectionsData($oAccount);
         $this->_setSectionData('SpamCop', $sData);
-        
+
         if (self::AutoSave) {
             $bSaved = $this->_resaveSectionsData($oAccount);
         }

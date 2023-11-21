@@ -91,7 +91,7 @@ class Module extends \Aurora\System\Module\AbstractModule
                     'BccAction' => $oAccount->getExtendedProp(self::GetName() . '::BccAction', $oSettings->DefaultAction),
                     'UpperBoundary' => $oAccount->getExtendedProp(self::GetName() . '::UpperBoundary', $oSettings->UpperBoundary),
                     'LowerBoundary' => $oAccount->getExtendedProp(self::GetName() . '::LowerBoundary', $oSettings->LowerBoundary),
-                    'AllowDomainList' => $oAccount->getExtendedProp(self::GetName() . '::AllowDomainList', [])                
+                    'AllowDomainList' => $oAccount->getExtendedProp(self::GetName() . '::AllowDomainList', [])
                 ];
             }
         }
@@ -104,7 +104,7 @@ class Module extends \Aurora\System\Module\AbstractModule
         $result = false;
 
         Api::checkUserRoleIsAtLeast(UserRole::NormalUser);
-        
+
         $oUser = Api::getAuthenticatedUser();
         if ($oUser) {
             $oAccount = MailModule::Decorator()->GetAccount($AccountId);
