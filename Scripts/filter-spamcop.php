@@ -42,7 +42,7 @@ $bExitStatus = true;
 
 /* === Define the patterns and variables === */
 $sEmailPattern = "\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,6}\b";
-$sLinePattern = "^.*(?:To:|Cc:).+" . $sEmailPattern;
+$sLinePattern = "^\s*(?:To:|Cc:).+" . $sEmailPattern;
 $sMessageIdPattern = "^(?:\s*message-id).+$";
 $sSpamScorePattern = "^(?:\s*x-spam-score):\s*(.+)$";
 
@@ -93,42 +93,48 @@ if (!isset($aAccountParams['LowerBoundary'])
     exit(0);
 }
 
-/* === Getting spam scores and boundary ==== */
-$iLowerBoundary = $aAccountParams['LowerBoundary'] ? (int) $aAccountParams['LowerBoundary'] : 3;
-$iUpperBoundary = $aAccountParams['UpperBoundary'] ? (int) $aAccountParams['UpperBoundary'] : 5;
-$iSpamScore = isset($sSpamScoreMatch[1]) ? (int) ($sSpamScoreMatch[1][0]) : 0;
+/* === Checking if user's address is specified as recipient  ==== */
+$bRecipientExists = false;
+$sRecipientsSQL = "'$SENDER'";
+// Loop through the lines with emails
+foreach ($sEmailLines[0] as $sEmailLine) {
+    $logger("Found header:", $sEmailLine);
+    // Extract the emails from the line
+    preg_match_all("/$sEmailPattern/i", $sEmailLine, $sEmails);
 
-$logger("Spam Score:", $iSpamScore);
-$logger("Boundary:", '[' . $iLowerBoundary . '-' . $iUpperBoundary . ']');
+    // Loop through the emails
+    foreach ($sEmails[0] as $sEmail) {
+        $logger("       email: ", $sEmail);
+        $sRecipientsSQL .= ",'$sEmail'";
+        if ($sEmail === $RECIPIENT) {
+            $bRecipientExists = true;
+        }
+    }
+    $logger();
+}
+
+$logger("Recipient exists in headers:", $bRecipientExists ? 'yes' : 'no');
 $logger();
 
-/* === Entering the main case and perform all checks ==== */
-if ($iSpamScore >= $iLowerBoundary && $iSpamScore <= $iUpperBoundary) {
-    $bRecipientExists = false;
-    $sRecipientsSQL = "'$SENDER'";
-    // Loop through the lines with emails
-    foreach ($sEmailLines[0] as $sEmailLine) {
-        $logger("Found header:", $sEmailLine);
-        // Extract the emails from the line
-        preg_match_all("/$sEmailPattern/i", $sEmailLine, $sEmails);
+/* === Recipient is not specified correctly, then we need to check the contacts and sender's domain === */
+if (!$bRecipientExists) {
+    /* === Getting spam scores and boundary ==== */
+    $iLowerBoundary = $aAccountParams['LowerBoundary'] ? (int) $aAccountParams['LowerBoundary'] : 3;
+    $iUpperBoundary = $aAccountParams['UpperBoundary'] ? (int) $aAccountParams['UpperBoundary'] : 5;
+    $iSpamScore = isset($sSpamScoreMatch[1]) ? (int) ($sSpamScoreMatch[1][0]) : 0;
 
-        // Loop through the emails
-        foreach ($sEmails[0] as $sEmail) {
-            $logger("       email: ", $sEmail);
-            $sRecipientsSQL .= ",'$sEmail'";
-            if ($sEmail === $RECIPIENT) {
-                $bRecipientExists = true;
-            }
-        }
-        $logger();
-    }
-
-    $logger("Recipient exists in headers:", $bRecipientExists ? 'yes' : 'no');
+    $logger("Spam Score:", $iSpamScore);
+    $logger("Boundary:", '[' . $iLowerBoundary . '-' . $iUpperBoundary . ']');
     $logger();
 
-    if (!$bRecipientExists) {
-        // Remove the first and last character from the SQL string
-        // $sRecipientsSQL = substr($sRecipientsSQL, 1, -1);
+    /* === Entering the case if spam score is above the upper boundary === */
+    if ($iSpamScore > $iUpperBoundary) {
+        $bExitStatus = false;
+        $logger("", "Message blocked!");
+
+        /* === Spam score is inbetween lower and upper boundary === */
+    } elseif ($iSpamScore >= $iLowerBoundary && $iSpamScore <= $iUpperBoundary) {
+
         $logger("Contacts for checking:", $sRecipientsSQL);
         // Define the SQL query for contacts
         $sContactsSQL = "" .
@@ -141,8 +147,7 @@ AND u.PublicId = '$RECIPIENT'";
             $logger("Contacts SQL: \n", $sContactsSQL);
         }
 
-        // Execute the query and get the count
-        // $iContactsCount = shell_exec("mysql -u$USER -p$PASS $DATABASE --batch --silent -e \"$sContactsSQL\"");
+        // Execute the query and get the contacts count
         $oContactsCountResult = $mysqli->query($sContactsSQL);
         $iContactsCount = (int) $oContactsCountResult->fetch_assoc()['count'];
 
@@ -185,10 +190,6 @@ AND u.PublicId = '$RECIPIENT'";
             }
         }
     }
-    /* === Entering the case if spam score over the upper boundary === */
-} elseif ($iSpamScore > $iUpperBoundary) {
-    $bExitStatus = false;
-    $logger("", "Message blocked!");
 }
 
 /* === Passing the message because nothing above bloked it === */
