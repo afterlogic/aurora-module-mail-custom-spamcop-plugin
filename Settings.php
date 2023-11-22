@@ -46,6 +46,12 @@ class Settings extends \Aurora\System\Module\Settings
                 Enums\ActionTypes::class,
                 "",
             ),
+            "SpamScoreThreshold" => new SettingsProperty(
+                3,
+                "int",
+                null,
+                "",
+            ),
             "SieveScriptPath" => new SettingsProperty(
                 "filter-spamcop.php",
                 "string",

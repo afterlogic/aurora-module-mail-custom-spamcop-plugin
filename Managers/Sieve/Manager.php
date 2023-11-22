@@ -73,17 +73,24 @@ class Manager extends \Aurora\Modules\Mail\Managers\Sieve\Manager
         $bAdded = false;
         $bSaved = false;
 
-        $sScriptPath = $this->oModuleSettings->SieveScriptPath;
-
         if ($bEnable) { // && \file_exists($sScriptPath)
             $sEncodedData = \base64_encode('filter-spamcop.php');
             $sData .= '#data=' . $sEncodedData . "\n";
-            $sData .= "if not execute :pipe \"" . $sScriptPath . "\" {\n";
+            $sData .= "if not execute :pipe \"" . $this->oModuleSettings->SieveScriptPath . "\" {\n";
             $sData .= "    " . ($Action === ActionTypes::Delete ? "discard;" : "fileinto \"Spam\";") . "\n";
             $sData .= "    stop;\n";
             $sData .= "}\n";
 
             $this->_addRequirement('SpamCop', 'vnd.dovecot.execute');
+
+            $sSpamThreshold = $this->oModuleSettings->SpamScoreThreshold;
+            $sData .= "\n";
+            $sData .= "if header :value \"ge\" :comparator \"i;ascii-numeric\" \"X-Spam-Score\" \"" . $sSpamThreshold . "\" {\n";
+            $sData .= "    fileinto \"Spam\";\n";
+            $sData .= "    stop;\n";
+            $sData .= "}\n";
+
+            // $this->_addRequirement('SpamCop', 'comparator-i;ascii-numeric');
 
             $bAdded = true;
         } else {
