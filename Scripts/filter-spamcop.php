@@ -119,12 +119,12 @@ $logger();
 /* === Recipient is not specified correctly, then we need to check the contacts and sender's domain === */
 if (!$bRecipientExists) {
     /* === Getting spam scores and boundary ==== */
-    $iLowerBoundary = $aAccountParams['LowerBoundary'] ? (int) $aAccountParams['LowerBoundary'] : 3;
-    $iUpperBoundary = $aAccountParams['UpperBoundary'] ? (int) $aAccountParams['UpperBoundary'] : 5;
-    $iSpamScore = isset($sSpamScoreMatch[1]) ? (int) ($sSpamScoreMatch[1][0]) : 0;
+    $iLowerBoundary = $aAccountParams['LowerBoundary'] ? (float) $aAccountParams['LowerBoundary'] : 3;
+    $iUpperBoundary = $aAccountParams['UpperBoundary'] ? (float) $aAccountParams['UpperBoundary'] : 5;
+    $iSpamScore = isset($sSpamScoreMatch[1]) ? (float) ($sSpamScoreMatch[1][0]) : 0;
 
     $logger("Spam Score:", $iSpamScore);
-    $logger("Boundary:", '[' . $iLowerBoundary . '-' . $iUpperBoundary . ']');
+    $logger("Boundary:", '"' . $iLowerBoundary . '"-"' . $iUpperBoundary . '"');
     $logger();
 
     /* === Entering the case if spam score is above the upper boundary === */

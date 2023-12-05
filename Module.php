@@ -121,8 +121,8 @@ class Module extends \Aurora\System\Module\AbstractModule
             $Action = Enums\ActionTypes::validateValue($Action) ? $Action : Enums\ActionTypes::Spam;
 
             if ($oAccount) {
-                $oAccount->setExtendedProp(self::GetName() . '::UpperBoundary', (int) $UpperBoundary);
-                $oAccount->setExtendedProp(self::GetName() . '::LowerBoundary', (int) $LowerBoundary);
+                $oAccount->setExtendedProp(self::GetName() . '::UpperBoundary', (float) $UpperBoundary);
+                $oAccount->setExtendedProp(self::GetName() . '::LowerBoundary', (float) $LowerBoundary);
                 $oAccount->setExtendedProp(self::GetName() . '::Action', $Action);
                 $oAccount->setExtendedProp(self::GetName() . '::AllowDomainList', (array) $DomailAllowList);
                 $result = $oAccount->save();
