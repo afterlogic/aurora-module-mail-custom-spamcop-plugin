@@ -121,7 +121,17 @@ if (!$bRecipientExists) {
     /* === Getting spam scores and boundary ==== */
     $iLowerBoundary = $aAccountParams['LowerBoundary'] ? (float) $aAccountParams['LowerBoundary'] : 3;
     $iUpperBoundary = $aAccountParams['UpperBoundary'] ? (float) $aAccountParams['UpperBoundary'] : 5;
-    $iSpamScore = isset($sSpamScoreMatch[1]) ? (float) ($sSpamScoreMatch[1][0]) : 0;
+    $iSpamScore = isset($sSpamScoreMatch[1]) ? $sSpamScoreMatch[1][0] : 0;
+
+    // detect the value type of Spam Score
+    $iSpamScore = strpos($iSpamScore, '.') ? (float) $iSpamScore : (int) $iSpamScore;
+
+    // if spam score is above 10 most likely its a float number with missing dot
+    // les't correct this
+    if ($iSpamScore >= 10 && gettype($iSpamScore) === 'integer') {
+        $logger("Spam Score will be corrected:", $iSpamScore);
+        $iSpamScore = $iSpamScore / 10;
+    }
 
     $logger("Spam Score:", $iSpamScore);
     $logger("Boundary:", '"' . $iLowerBoundary . '"-"' . $iUpperBoundary . '"');
