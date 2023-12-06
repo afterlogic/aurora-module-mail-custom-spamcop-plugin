@@ -59,6 +59,11 @@ $logger("Recipient:", $RECIPIENT);
 $logger("Message id:", $sMessageIdLine[0]);
 
 /* === getting account setting ==== */
+if (!($USER && $PASS && $DATABASE)) {
+    $logger("", "The script is not configured properly!");
+    exit(0);
+}
+
 $mysqli = new mysqli("127.0.0.1", $USER, $PASS, $DATABASE);
 
 if ($mysqli->connect_errno) {
@@ -128,9 +133,9 @@ if (!$bRecipientExists) {
 
     // if spam score is above 10 most likely its a float number with missing dot
     // les't correct this
-    if ($iSpamScore >= 10 && gettype($iSpamScore) === 'integer') {
+    if (abs($iSpamScore) >= 10) {
         $logger("Spam Score will be corrected:", $iSpamScore);
-        $iSpamScore = $iSpamScore / 10;
+        $iSpamScore = round($iSpamScore / 10, 1);
     }
 
     $logger("Spam Score:", $iSpamScore);
