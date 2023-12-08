@@ -20,11 +20,17 @@ if ($bDebug) {
     $SENDER = '';
     $RECIPIENT = '';
     $sMessage = file_get_contents($DIR . '');
+    $aAccountParams = array(
+        'LowerBoundary' => 3,
+        'UpperBoundary' => 4.5,
+        'AllowDomainList' => array(),
+    );
 } else {
     // HOME, USER, SENDER, RECIPIENT, ORIG_RECIPIENT
     $SENDER = getenv('SENDER');
     $RECIPIENT = getenv('RECIPIENT');
     $sMessage = file_get_contents('php://stdin');
+    $aAccountParams = \json_decode(\base64_decode($argv[1]), true);
 }
 
 // Define a log function
@@ -63,7 +69,6 @@ if (!($USER && $PASS && $DATABASE)) {
     $logger("", "The script is not configured properly!");
     exit(0);
 }
-
 $mysqli = new mysqli("127.0.0.1", $USER, $PASS, $DATABASE);
 
 if ($mysqli->connect_errno) {
@@ -71,26 +76,27 @@ if ($mysqli->connect_errno) {
     exit(0);
 }
 
-$sAccountParamsSQL = "SELECT a.Properties FROM mail_accounts AS a
-LEFT JOIN core_users AS u ON u.Id = a.IdUser
-WHERE u.PublicId = '$RECIPIENT'";
+// $sAccountParamsSQL = "SELECT a.Properties FROM mail_accounts AS a
+// LEFT JOIN core_users AS u ON u.Id = a.IdUser
+// WHERE u.PublicId = '$RECIPIENT'";
 
-if ($bDebug) {
-    $logger("Account Params SQL: \n", $sAccountParamsSQL);
-}
+// if ($bDebug) {
+//     $logger("Account Params SQL: \n", $sAccountParamsSQL);
+// }
 
-$oAccountParamsResult = $mysqli->query($sAccountParamsSQL);
-$oAccountParamsResult = $oAccountParamsResult->fetch_assoc();
-$oAccountParamsAll = isset($oAccountParamsResult['Properties']) ? \json_decode($oAccountParamsResult['Properties']) : [];
-$aAccountParams = array();
-foreach($oAccountParamsAll as $key => $value) {
-    $newKey = str_replace('MailCustomSpamCopPlugin::', '', $key);
-    if ($newKey !== $key) {
-        $aAccountParams[$newKey] = $value;
-    }
-}
+// $oAccountParamsResult = $mysqli->query($sAccountParamsSQL);
+// $oAccountParamsResult = $oAccountParamsResult->fetch_assoc();
+// $oAccountParamsAll = isset($oAccountParamsResult['Properties']) ? \json_decode($oAccountParamsResult['Properties']) : [];
+// $aAccountParams = array();
+// foreach($oAccountParamsAll as $key => $value) {
+//     $newKey = str_replace('MailCustomSpamCopPlugin::', '', $key);
+//     if ($newKey !== $key) {
+//         $aAccountParams[$newKey] = $value;
+//     }
+// }
 
-if (!isset($aAccountParams['LowerBoundary'])
+if (!$aAccountParams
+    || !isset($aAccountParams['LowerBoundary'])
     || !isset($aAccountParams['UpperBoundary'])
     || !isset($aAccountParams['AllowDomainList'])
 ) {

@@ -91,16 +91,16 @@ class Module extends \Aurora\System\Module\AbstractModule
         $oUser = Api::getAuthenticatedUser();
         if ($oUser) {
             $oAccount = MailModule::Decorator()->GetAccount($AccountId);
-            $oSettings = $this->oModuleSettings;
 
             if ($oAccount) {
+                $aData = $this->getSieveManager()->getSpamCopRule($oAccount);
                 return [
                     'EActionTypes' => (new Enums\ActionTypes())->getMap(),
-                    'Enabled' => $this->getSieveManager()->checkIfRuleExists($oAccount),
-                    'Action' => $oAccount->getExtendedProp(self::GetName() . '::Action', $oSettings->DefaultAction),
-                    'UpperBoundary' => $oAccount->getExtendedProp(self::GetName() . '::UpperBoundary', $oSettings->UpperBoundary),
-                    'LowerBoundary' => $oAccount->getExtendedProp(self::GetName() . '::LowerBoundary', $oSettings->LowerBoundary),
-                    'AllowDomainList' => $oAccount->getExtendedProp(self::GetName() . '::AllowDomainList', [])
+                    'Enabled' => $aData['Enabled'],
+                    'Action' => $aData['Action'],
+                    'UpperBoundary' => $aData['UpperBoundary'],
+                    'LowerBoundary' => $aData['LowerBoundary'],
+                    'AllowDomainList' => $aData['AllowDomainList']
                 ];
             }
         }
@@ -121,15 +121,15 @@ class Module extends \Aurora\System\Module\AbstractModule
             $Action = Enums\ActionTypes::validateValue($Action) ? $Action : Enums\ActionTypes::Spam;
 
             if ($oAccount) {
-                $oAccount->setExtendedProp(self::GetName() . '::UpperBoundary', (float) $UpperBoundary);
-                $oAccount->setExtendedProp(self::GetName() . '::LowerBoundary', (float) $LowerBoundary);
-                $oAccount->setExtendedProp(self::GetName() . '::Action', $Action);
-                $oAccount->setExtendedProp(self::GetName() . '::AllowDomainList', (array) $DomailAllowList);
-                $result = $oAccount->save();
+                $aData = [
+                    'Enabled' => (bool) $Enabled,
+                    'UpperBoundary' => (float) $UpperBoundary,
+                    'LowerBoundary' => (float) $LowerBoundary,
+                    'Action' => $Action,
+                    'AllowDomainList' => (array) $DomailAllowList
+                ];
 
-                if ($result) {
-                    $result = $this->getSieveManager()->setSpamCopRule($oAccount, !!$Enabled, $Action);
-                }
+                $result = $this->getSieveManager()->setSpamCopRule($oAccount, !!$Enabled, $aData);
             }
         }
 

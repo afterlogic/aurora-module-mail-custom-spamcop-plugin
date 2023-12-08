@@ -37,26 +37,36 @@ class Manager extends \Aurora\Modules\Mail\Managers\Sieve\Manager
 
     /**
      * @param \Aurora\Modules\Mail\Models\MailAccount $oAccount
-     *
-     * @return bool
+     * @return array
      */
-    public function checkIfRuleExists($oAccount)
+    public function getSpamCopRule($oAccount)
     {
-        $bResult = false;
-
         $this->_parseSectionsData($oAccount);
         $sData = $this->_getSectionData('SpamCop');
 
+        // defining defailt values
+        $aResult = [
+            'Enabled' => false,
+            'UpperBoundary' => (float) $this->oModuleSettings->UpperBoundary,
+            'LowerBoundary' => (float) $this->oModuleSettings->LowerBoundary,
+            'Action' => ActionTypes::Spam,
+            'AllowDomainList' => []
+        ];
+
         $aMatch = array();
         if (!empty($sData) && preg_match('/#data=([^\n]+)/', $sData, $aMatch) && isset($aMatch[1])) {
-            $oData = \base64_decode($aMatch[1]);
+            $oData = \json_decode(\base64_decode($aMatch[1]), true);
 
-            if ($oData && $oData === $this->oModuleSettings->SieveScriptPath) {
-                $bResult = true;
+            if ($oData) {
+                $aResult['Enabled'] = isset($oData['Enabled']) ? $oData['Enabled'] : $aResult['Enabled'];
+                $aResult['UpperBoundary'] = isset($oData['UpperBoundary']) ? $oData['UpperBoundary'] : $aResult['UpperBoundary'];
+                $aResult['LowerBoundary'] = isset($oData['LowerBoundary']) ? $oData['LowerBoundary'] : $aResult['LowerBoundary'];
+                $aResult['Action'] = isset($oData['Action']) ? $oData['Action'] : $aResult['Action'];
+                $aResult['AllowDomainList'] = isset($oData['AllowDomainList']) ? $oData['AllowDomainList'] : $aResult['AllowDomainList'];
             }
         }
 
-        return $bResult;
+        return $aResult;
     }
 
     /**
@@ -66,27 +76,28 @@ class Manager extends \Aurora\Modules\Mail\Managers\Sieve\Manager
      *
      * @return bool
      */
-    public function setSpamCopRule($oAccount, $bEnable = true, $Action = ActionTypes::Spam)
+    public function setSpamCopRule($oAccount, $bEnable = true, $aData = [])
     {
         $sData = '';
 
-        $bAdded = false;
         $bSaved = false;
 
-        if ($bEnable) {
-            $sEncodedData = \base64_encode('filter-spamcop.php');
-            $sData .= '#data=' . $sEncodedData . "\n";
-            $sData .= "if not execute :pipe \"" . $this->oModuleSettings->SieveScriptPath . "\" {\n";
-            $sData .= "    " . ($Action === ActionTypes::Delete ? "discard;" : "fileinto \"Spam\";") . "\n";
-            $sData .= "    stop;\n";
-            $sData .= "}\n";
+        $Action = isset($aData['Action']) ? $aData['Action'] : ActionTypes::Spam;
 
-            $this->_addRequirement('SpamCop', 'vnd.dovecot.execute');
+        $sEncodedData = \base64_encode(json_encode($aData));
+        $sEncryptedData = '#data=' . $sEncodedData . "\n";
+        $sData .= "if not execute :pipe \"" . $this->oModuleSettings->SieveScriptPath . " '" . $sEncodedData . "'\" {\n";
+        $sData .= "    " . ($Action === ActionTypes::Delete ? "discard;" : "fileinto \"Spam\";") . "\n";
+        $sData .= "    stop;\n";
+        $sData .= "}\n";
 
-            $bAdded = true;
-        } else {
-            Api::Log('"SpamCop" settings has not yet been set.');
+        $this->_addRequirement('SpamCop', 'vnd.dovecot.execute');
+
+        if (!$bEnable) {
+            $sData = '#' . implode("\n#", explode("\n", $sData));
         }
+
+        $sData = $sEncryptedData . $sData;
 
         $this->_parseSectionsData($oAccount);
         $this->_setSectionData('SpamCop', $sData);
@@ -95,6 +106,6 @@ class Manager extends \Aurora\Modules\Mail\Managers\Sieve\Manager
             $bSaved = $this->_resaveSectionsData($oAccount);
         }
 
-        return $bSaved && $bAdded === $bEnable;
+        return $bSaved;
     }
 }
