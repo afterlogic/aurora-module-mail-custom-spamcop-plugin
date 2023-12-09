@@ -86,7 +86,7 @@ class Manager extends \Aurora\Modules\Mail\Managers\Sieve\Manager
 
         $sEncodedData = \base64_encode(json_encode($aData));
         $sEncryptedData = '#data=' . $sEncodedData . "\n";
-        $sData .= "if not execute :pipe \"" . $this->oModuleSettings->SieveScriptPath . " '" . $sEncodedData . "'\" {\n";
+        $sData .= "if not execute :pipe \"" . $this->oModuleSettings->SieveScriptPath . "\" [\"" . $sEncodedData . "\"] {\n";
         $sData .= "    " . ($Action === ActionTypes::Delete ? "discard;" : "fileinto \"Spam\";") . "\n";
         $sData .= "    stop;\n";
         $sData .= "}\n";
