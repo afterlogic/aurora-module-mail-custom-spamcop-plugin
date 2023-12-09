@@ -6,9 +6,8 @@ if (PHP_SAPI !== 'cli') {
 
 $DIR = __DIR__ . '/';
 
-$USER = '';
-$PASS = '';
-$DATABASE = '';
+include 'config.php';
+
 $DATE = date("Y-m-d");
 $LOG_FILE = '/opt/afterlogic/var/log/seive-script-log-' . $DATE . '.log';
 
