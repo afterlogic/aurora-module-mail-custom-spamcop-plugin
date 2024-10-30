@@ -43,6 +43,29 @@ $logger = function ($label = '', ...$args) use ($colors, $bDebug, $LOG_FILE) {
     file_put_contents($LOG_FILE, $text, FILE_APPEND);
 };
 
+$getMessageSpamScore = function ($sMessage) use ($sSpamScorePattern, $logger) {
+    // Get spam score
+    preg_match_all("/$sSpamScorePattern/im", $sMessage, $sSpamScoreMatch);
+
+    $iSpamScore = 0;
+    
+    if (isset($sSpamScoreMatch[1])) {
+        $iSpamScore = $sSpamScoreMatch[1][0];
+
+        // detect the value type of Spam Score
+        $iSpamScore = strpos($iSpamScore, '.') ? (float) $iSpamScore : (int) $iSpamScore;
+    
+        // if spam score is above 10 most likely its a float number with missing dot
+        // les't correct this
+        if (abs($iSpamScore) >= 10) {
+            $logger("Spam Score will be corrected:", $iSpamScore);
+            $iSpamScore = round($iSpamScore / 10, 1);
+        }
+    }
+
+    return $iSpamScore;
+};
+
 $bExitStatus = true;
 
 /* === Define the patterns and variables === */
@@ -55,8 +78,6 @@ $sSpamScorePattern = "^(?:\s*x-spam-score):\s*(.+)$";
 preg_match_all("/$sLinePattern/im", $sMessage, $sEmailLines);
 // Get the message id line
 preg_match("/$sMessageIdPattern/im", $sMessage, $sMessageIdLine);
-// Get spam score
-preg_match_all("/$sSpamScorePattern/im", $sMessage, $sSpamScoreMatch);
 
 /* === Output debug info ==== */
 $logger("=== Process incomming message ===");
@@ -74,25 +95,6 @@ if ($mysqli->connect_errno) {
     $logger("Failed to connect to MySQL:", $mysqli->connect_error);
     exit(0);
 }
-
-// $sAccountParamsSQL = "SELECT a.Properties FROM mail_accounts AS a
-// LEFT JOIN core_users AS u ON u.Id = a.IdUser
-// WHERE u.PublicId = '$RECIPIENT'";
-
-// if ($bDebug) {
-//     $logger("Account Params SQL: \n", $sAccountParamsSQL);
-// }
-
-// $oAccountParamsResult = $mysqli->query($sAccountParamsSQL);
-// $oAccountParamsResult = $oAccountParamsResult->fetch_assoc();
-// $oAccountParamsAll = isset($oAccountParamsResult['Properties']) ? \json_decode($oAccountParamsResult['Properties']) : [];
-// $aAccountParams = array();
-// foreach($oAccountParamsAll as $key => $value) {
-//     $newKey = str_replace('MailCustomSpamCopPlugin::', '', $key);
-//     if ($newKey !== $key) {
-//         $aAccountParams[$newKey] = $value;
-//     }
-// }
 
 if (!$aAccountParams
     || !isset($aAccountParams['LowerBoundary'])
@@ -131,17 +133,8 @@ if (!$bRecipientExists) {
     /* === Getting spam scores and boundary ==== */
     $iLowerBoundary = $aAccountParams['LowerBoundary'] ? (float) $aAccountParams['LowerBoundary'] : 3;
     $iUpperBoundary = $aAccountParams['UpperBoundary'] ? (float) $aAccountParams['UpperBoundary'] : 5;
-    $iSpamScore = isset($sSpamScoreMatch[1]) ? $sSpamScoreMatch[1][0] : 0;
 
-    // detect the value type of Spam Score
-    $iSpamScore = strpos($iSpamScore, '.') ? (float) $iSpamScore : (int) $iSpamScore;
-
-    // if spam score is above 10 most likely its a float number with missing dot
-    // les't correct this
-    if (abs($iSpamScore) >= 10) {
-        $logger("Spam Score will be corrected:", $iSpamScore);
-        $iSpamScore = round($iSpamScore / 10, 1);
-    }
+    $iSpamScore = $getMessageSpamScore($sMessage);
 
     $logger("Spam Score:", $iSpamScore);
     $logger("Boundary:", '"' . $iLowerBoundary . '"-"' . $iUpperBoundary . '"');
