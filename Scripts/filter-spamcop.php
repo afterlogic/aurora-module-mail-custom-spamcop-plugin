@@ -14,7 +14,6 @@ $LOG_FILE = '/opt/afterlogic/var/log/seive-script-log-' . $DATE . '.log';
 $colors = (object)['no' => "\033[0m",'red' => "\033[1;31m",'green' => "\033[1;32m",'yellow' => "\033[1;33m",'bg_red' => "\033[1;41m",'bg_green' => "\033[1;42m",'bg_yellow' => "\033[1;43m"];
 
 $bDebug = false;
-
 if ($bDebug) {
     $SENDER = '';
     $RECIPIENT = '';
@@ -22,7 +21,7 @@ if ($bDebug) {
     $aAccountParams = array(
         'LowerBoundary' => 3,
         'UpperBoundary' => 4.5,
-        'AllowDomainList' => array(),
+        'AllowDomainList' => array(''),
     );
 } else {
     // HOME, USER, SENDER, RECIPIENT, ORIG_RECIPIENT
@@ -43,9 +42,9 @@ $logger = function ($label = '', ...$args) use ($colors, $bDebug, $LOG_FILE) {
     file_put_contents($LOG_FILE, $text, FILE_APPEND);
 };
 
-$getMessageSpamScore = function ($sMessage) use ($sSpamScorePattern, $logger) {
+$getMessageSpamScore = function ($sMessage) use ($logger) {
     // Get spam score
-    preg_match_all("/$sSpamScorePattern/im", $sMessage, $sSpamScoreMatch);
+    preg_match_all("/^(?:\s*x-spam-score):\s*(.+)$/im", $sMessage, $sSpamScoreMatch);
 
     $iSpamScore = 0;
     
@@ -72,7 +71,6 @@ $bExitStatus = true;
 $sEmailPattern = "\b[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,6}\b";
 $sLinePattern = "^\s*(?:To:|Cc:).+" . $sEmailPattern;
 $sMessageIdPattern = "^(?:\s*message-id).+$";
-$sSpamScorePattern = "^(?:\s*x-spam-score):\s*(.+)$";
 
 // Get the lines with emails
 preg_match_all("/$sLinePattern/im", $sMessage, $sEmailLines);
@@ -128,85 +126,94 @@ foreach ($sEmailLines[0] as $sEmailLine) {
 $logger("Recipient exists in headers:", $bRecipientExists ? 'yes' : 'no');
 $logger();
 
-/* === Recipient is not specified correctly, then we need to check the contacts and sender's domain === */
-if (!$bRecipientExists) {
-    /* === Getting spam scores and boundary ==== */
-    $iLowerBoundary = $aAccountParams['LowerBoundary'] ? (float) $aAccountParams['LowerBoundary'] : 3;
-    $iUpperBoundary = $aAccountParams['UpperBoundary'] ? (float) $aAccountParams['UpperBoundary'] : 5;
+/* === Getting spam scores and boundary ==== */
+$iLowerBoundary = $aAccountParams['LowerBoundary'] ? (float) $aAccountParams['LowerBoundary'] : 3;
+$iUpperBoundary = $aAccountParams['UpperBoundary'] ? (float) $aAccountParams['UpperBoundary'] : 5;
 
-    $iSpamScore = $getMessageSpamScore($sMessage);
+$iSpamScore = $getMessageSpamScore($sMessage);
 
-    $logger("Spam Score:", $iSpamScore);
-    $logger("Boundary:", '"' . $iLowerBoundary . '"-"' . $iUpperBoundary . '"');
+$logger("Spam Score:", $iSpamScore);
+$logger("Boundary:", '"' . $iLowerBoundary . '"-"' . $iUpperBoundary . '"');
+$logger();
+
+if ($bRecipientExists) { //IF To-recipient IN (own mail-adresses or aliases)
+
+    if ($iSpamScore > $iUpperBoundary)  {// IF mail-spam-score > UPPER_LIMIT
+        // MARK_AS_SPAM
+        $bExitStatus = false;
+    } else {
+        // DELIVER_MAIL
+    }
+} else {
+    // do we at least know sender or recipient?
+
+    $logger("Contacts for checking:", $sRecipientsSQL);
+    // Define the SQL query for contacts
+    $sContactsSQL = "" .
+    "SELECT COUNT(*) AS count FROM " . $PREFIX . "contacts_cards AS c
+    WHERE (c.PersonalEmail IN ($sRecipientsSQL) OR c.BusinessEmail IN ($sRecipientsSQL) OR c.OtherEmail IN ($sRecipientsSQL)) 
+    AND c.AddressBookId IN (SELECT id FROM " . $PREFIX . "adav_addressbooks WHERE principaluri = 'principals/" . $RECIPIENT . "')";
+
+    if ($bDebug) {
+        $logger("Contacts SQL: \n", $sContactsSQL);
+    }
+
+    // Execute the query and get the contacts count
+    $oContactsCountResult = $mysqli->query($sContactsSQL);
+    $iContactsCount = (int) $oContactsCountResult->fetch_assoc()['count'];
+
+    $logger("Contacts found:", $iContactsCount);
     $logger();
 
-    /* === Entering the case if spam score is above the upper boundary === */
-    if ($iSpamScore > $iUpperBoundary) {
-        $bExitStatus = false;
-        $logger("", "Message blocked!");
-
-        /* === Spam score is inbetween lower and upper boundary === */
-    } elseif ($iSpamScore >= $iLowerBoundary && $iSpamScore <= $iUpperBoundary) {
-
-        $logger("Contacts for checking:", $sRecipientsSQL);
-        // Define the SQL query for contacts
-        $sContactsSQL = "" .
-"SELECT COUNT(*) AS count FROM contacts AS c
-LEFT JOIN core_users AS u ON u.Id = c.IdUser
-WHERE (c.PersonalEmail IN ($sRecipientsSQL) OR c.BusinessEmail IN ($sRecipientsSQL) OR c.OtherEmail IN ($sRecipientsSQL)) 
-AND u.PublicId = '$RECIPIENT'";
-
-        if ($bDebug) {
-            $logger("Contacts SQL: \n", $sContactsSQL);
+    if ($iContactsCount > 0) { // IF sender IN (known adresses) OR To-recipient IN (known adresses) {
+        
+        if ($iSpamScore > $iUpperBoundary) { //IF mail-spam-score > UPPER_LIMIT
+            // MARK_AS_SPAM
+            $bExitStatus = false;
+        } else {
+            // DELIVER_MAIL
         }
+    } else {
+        preg_match("/(?<=@)[A-Za-z0-9.-]+\.[A-Za-z]{2,6}$/", $SENDER, $sSenderDomain);
 
-        // Execute the query and get the contacts count
-        $oContactsCountResult = $mysqli->query($sContactsSQL);
-        $iContactsCount = (int) $oContactsCountResult->fetch_assoc()['count'];
+        $logger("Domain for checking:", $sSenderDomain[0]);
 
-        $logger("Contacts found:", $iContactsCount);
+        $iDomainsCount = 0;
+        foreach ($aAccountParams['AllowDomainList'] as $sDomain) {
+            if ($sSenderDomain[0] === $sDomain || end(explode(".", $sSenderDomain[0])) === $sDomain) {
+                $iDomainsCount++;
+            }
+        }
+        $logger("Domains found:", $iDomainsCount);
         $logger();
 
-        if ($iContactsCount === 0) {
-            // Get the sender domain
-            preg_match("/(?<=@)[A-Za-z0-9.-]+\.[A-Za-z]{2,6}$/", $SENDER, $sSenderDomain);
+        if ($iDomainsCount > 0) { // IF sender_domain IN (allowed domains)
 
-            $logger("Domain for checking:", $sSenderDomain[0]);
-            // Define the SQL query for domains
-            //             $sDomainsSQL = "" .
-            // "SELECT * FROM mail_accounts AS d
-            // LEFT JOIN core_users AS u ON u.Id = d.IdUser
-            // WHERE u.PublicId = '$RECIPIENT'
-            // AND JSON_CONTAINS(d.Properties, '\"$sSenderDomain[0]\"', '$.MailCustomSpamCopPlugin::AllowDomainList')
-            // OR JSON_CONTAINS(d.Properties, '" . end(explode(".", $sSenderDomain[0])) . "', '$.MailCustomSpamCopPlugin::AllowDomainList')";
-
-            //             if ($bDebug) {
-            //                 $logger("Domains SQL: \n", $sDomainsSQL);
-            //             }
-
-            // Execute the query and get the count
-            // $oDomainsCountResult = $mysqli->query($sDomainsSQL);
-            // $iDomainsCount = (int) $oDomainsCountResult->fetch_assoc()['count'];
-
-            $iDomainsCount = 0;
-            foreach ($aAccountParams['AllowDomainList'] as $sDomain) {
-                if ($sSenderDomain[0] === $sDomain || end(explode(".", $sSenderDomain[0])) === $sDomain) {
-                    $iDomainsCount++;
-                }
-            }
-            $logger("Domains found:", $iDomainsCount);
-            $logger();
-
-            if ($iDomainsCount === 0) {
+            if ($iSpamScore > $iUpperBoundary) { // IF mail-spam-score > UPPER_LIMIT
+                // MARK_AS_SPAM
                 $bExitStatus = false;
-                $logger("", "Message blocked!");
+            } else {
+                // DELIVER_MAIL
+            }
+        } else {
+            // if the spam score is still so good we could allow it, default should be 1
+		    // but setting it to -5 will disable the last check and we burn the mail anyways
+
+            if ($iSpamScore < $iLowerBoundary) { // IF mail-spam-score < LOWER_LIMIT
+                // DELIVER_MAIL
+            } else {
+                // MARK_AS_SPAM
+                $bExitStatus = false;
             }
         }
     }
 }
-
-/* === Passing the message because nothing above bloked it === */
-$logger("Message passed!");
+if (!$bExitStatus) {
+    $logger("", "Message blocked!");
+} else {
+    /* === Passing the message because nothing above bloked it === */
+    $logger("Message passed!");
+}
 
 $logger("=== END Process incomming message ===");
 $logger();

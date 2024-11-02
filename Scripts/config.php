@@ -3,3 +3,4 @@
 $USER = '';
 $PASS = '';
 $DATABASE = '';
+$PREFIX = '';
