@@ -47,13 +47,13 @@ $getMessageSpamScore = function ($sMessage) use ($logger) {
     preg_match_all("/^(?:\s*x-spam-score):\s*(.+)$/im", $sMessage, $sSpamScoreMatch);
 
     $iSpamScore = 0;
-    
+
     if (isset($sSpamScoreMatch[1])) {
         $iSpamScore = $sSpamScoreMatch[1][0];
 
         // detect the value type of Spam Score
         $iSpamScore = strpos($iSpamScore, '.') ? (float) $iSpamScore : (int) $iSpamScore;
-    
+
         // if spam score is above 10 most likely its a float number with missing dot
         // les't correct this
         if (abs($iSpamScore) >= 10) {
@@ -138,7 +138,7 @@ $logger();
 
 if ($bRecipientExists) { //IF To-recipient IN (own mail-adresses or aliases)
 
-    if ($iSpamScore > $iUpperBoundary)  {// IF mail-spam-score > UPPER_LIMIT
+    if ($iSpamScore > $iUpperBoundary) {// IF mail-spam-score > UPPER_LIMIT
         // MARK_AS_SPAM
         $bExitStatus = false;
     } else {
@@ -166,7 +166,7 @@ if ($bRecipientExists) { //IF To-recipient IN (own mail-adresses or aliases)
     $logger();
 
     if ($iContactsCount > 0) { // IF sender IN (known adresses) OR To-recipient IN (known adresses) {
-        
+
         if ($iSpamScore > $iUpperBoundary) { //IF mail-spam-score > UPPER_LIMIT
             // MARK_AS_SPAM
             $bExitStatus = false;
@@ -197,7 +197,7 @@ if ($bRecipientExists) { //IF To-recipient IN (own mail-adresses or aliases)
             }
         } else {
             // if the spam score is still so good we could allow it, default should be 1
-		    // but setting it to -5 will disable the last check and we burn the mail anyways
+            // but setting it to -5 will disable the last check and we burn the mail anyways
 
             if ($iSpamScore < $iLowerBoundary) { // IF mail-spam-score < LOWER_LIMIT
                 // DELIVER_MAIL
