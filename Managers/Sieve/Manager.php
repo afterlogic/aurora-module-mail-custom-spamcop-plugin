@@ -71,8 +71,8 @@ class Manager extends \Aurora\Modules\Mail\Managers\Sieve\Manager
 
     /**
      * @param \Aurora\Modules\Mail\Models\MailAccount $oAccount
-     * @param boolean $bEnabled
-     * @param ActionTypes $Action
+     * @param boolean $bEnable
+     * @param array $aData
      *
      * @return bool
      */

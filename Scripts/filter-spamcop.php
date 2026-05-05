@@ -6,6 +6,11 @@ if (PHP_SAPI !== 'cli') {
 
 $DIR = __DIR__ . '/';
 
+/** @var string $USER */
+/** @var string $PASS */
+/** @var string $DATABASE */
+/** @var string $PREFIX */
+
 include 'config.php';
 
 $DATE = date("Y-m-d");
