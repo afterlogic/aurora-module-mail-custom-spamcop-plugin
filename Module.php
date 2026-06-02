@@ -79,6 +79,8 @@ class Module extends \Aurora\System\Module\AbstractModule
 
     public function GetSettings()
     {
+        Api::checkUserRoleIsAtLeast(UserRole::NormalUser);
+
         return [
             'EActionTypes' => (new Enums\ActionTypes())->getMap(),
         ];
