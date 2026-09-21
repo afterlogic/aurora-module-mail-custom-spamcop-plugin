@@ -110,7 +110,7 @@ if (!$aAccountParams
 
 /* === Checking if user's address is specified as recipient  ==== */
 $bRecipientExists = false;
-$sRecipientsSQL = "'$SENDER'";
+$sRecipientsSQL = "'" . $mysqli->real_escape_string($SENDER) . "'";
 // Loop through the lines with emails
 foreach ($sEmailLines[0] as $sEmailLine) {
     $logger("Found header:", $sEmailLine);
@@ -120,7 +120,7 @@ foreach ($sEmailLines[0] as $sEmailLine) {
     // Loop through the emails
     foreach ($sEmails[0] as $sEmail) {
         $logger("       email: ", $sEmail);
-        $sRecipientsSQL .= ",'$sEmail'";
+        $sRecipientsSQL .= ",'" . $mysqli->real_escape_string($sEmail) . "'";
         if ($sEmail === $RECIPIENT) {
             $bRecipientExists = true;
         }
@@ -157,7 +157,7 @@ if ($bRecipientExists) { //IF To-recipient IN (own mail-adresses or aliases)
     $sContactsSQL = "" .
     "SELECT COUNT(*) AS count FROM " . $PREFIX . "contacts_cards AS c
     WHERE (c.PersonalEmail IN ($sRecipientsSQL) OR c.BusinessEmail IN ($sRecipientsSQL) OR c.OtherEmail IN ($sRecipientsSQL)) 
-    AND c.AddressBookId IN (SELECT id FROM " . $PREFIX . "adav_addressbooks WHERE principaluri = 'principals/" . $RECIPIENT . "')";
+    AND c.AddressBookId IN (SELECT id FROM " . $PREFIX . "adav_addressbooks WHERE principaluri = 'principals/" . $mysqli->real_escape_string($RECIPIENT) . "')";
 
     if ($bDebug) {
         $logger("Contacts SQL: \n", $sContactsSQL);
